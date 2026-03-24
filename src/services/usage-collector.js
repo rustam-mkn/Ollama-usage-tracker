@@ -9,14 +9,17 @@ const CHROME_ARGS = [
 ];
 
 function extractUsage(text, label) {
-  const regex = new RegExp(`${label}\\s+(\\d+)%\\s+used\\s+Resets\\s+in\\s+([^\\n]+)`, 'i');
+  const regex = new RegExp(
+    `${label}\\s+(\\d+(?:[.,]\\d+)?)%\\s+used\\s+Resets\\s+in\\s+([^\\n]+)`,
+    'i'
+  );
   const match = text.match(regex);
   if (!match) {
     return null;
   }
 
   return {
-    percent: Number(match[1]),
+    percent: Number(match[1].replace(',', '.')),
     resetIn: match[2].trim(),
   };
 }

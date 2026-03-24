@@ -27,7 +27,16 @@ function pad(value, width) {
 }
 
 function clampPercent(percent) {
-  return Math.max(0, Math.min(100, Math.round(percent)));
+  return Math.max(0, Math.min(100, Number(percent)));
+}
+
+function formatPercent(percent) {
+  const normalized = clampPercent(percent);
+  if (Number.isInteger(normalized)) {
+    return String(normalized);
+  }
+
+  return normalized.toFixed(1);
 }
 
 function styleEmail(account, currentAccount) {
@@ -60,7 +69,7 @@ function renderBar(percent) {
 
 function renderUsageCell(percent, resetIn) {
   const normalized = clampPercent(percent);
-  const percentLabel = String(normalized).padStart(3, ' ');
+  const percentLabel = formatPercent(normalized).padStart(4, ' ');
   return `${renderBar(normalized)} ${percentLabel}%  ${resetIn}`;
 }
 
