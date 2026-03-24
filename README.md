@@ -1,80 +1,88 @@
-# Ollama Account Manager
+# Ollama Usage Tracker
 
-Interactive terminal app for tracking `Cloud Usage` across multiple Ollama accounts without constantly switching `ollama signin` / `signout`.
+Терминальное приложение для отслеживания `Cloud Usage` сразу по нескольким аккаунтам Ollama без постоянного переключения через `ollama signin` / `ollama signout`.
 
-## Features
+## Что умеет
 
-- Tracks multiple Ollama accounts in one place
-- Shows `session` and `weekly` usage in a terminal dashboard
-- Supports two views: framed table and account cards
-- Stores a separate persistent browser profile for each account
-- Lets you set the currently active account for visual highlighting
-- Integrates with `ollama account` in `zsh` without replacing the real `ollama` binary
+- Отслеживает несколько аккаунтов Ollama в одном интерфейсе
+- Показывает `session` и `weekly` usage в терминале
+- Поддерживает два режима отображения: таблица и карточки
+- Хранит отдельный браузерный профиль для каждой почты
+- Позволяет отметить текущий активный аккаунт для подсветки
+- Подключается к команде `ollama account` в `zsh`, не заменяя настоящий `ollama`
 
-## How It Works
+## Как это работает
 
-The app uses Playwright with a dedicated Chrome profile per email.
+Приложение использует Playwright и отдельный профиль Chrome для каждой почты.
 
-When you add an account:
+Когда ты добавляешь аккаунт:
 
-1. A browser window opens for that account profile
-2. You log into Ollama manually
-3. The app reuses the saved session later to fetch `Cloud Usage`
+1. Открывается окно браузера для конкретной почты
+2. Ты вручную входишь в Ollama
+3. Приложение сохраняет сессию и потом использует ее для чтения `Cloud Usage`
 
-This means regular Ollama commands stay untouched, and the app can read usage for several accounts independently.
+За счет этого обычные команды Ollama не ломаются, а usage можно собирать сразу по нескольким аккаунтам независимо друг от друга.
 
-## Requirements
+## Требования
 
 - macOS
 - `zsh`
 - Node.js 18+
-- Google Chrome installed at `/Applications/Google Chrome.app`
+- установленный Google Chrome в `/Applications/Google Chrome.app`
 
-## Installation
+## Установка
 
 ```bash
-git clone <your-repo-url>
-cd ollama-account-manager
+git clone https://github.com/rustam-mkn/Ollama-usage-tracker.git
+cd Ollama-usage-tracker
 npm install
 npm run install:zsh
 source ~/.zshrc
 ```
 
-## Usage
+## Запуск
 
-Start the app:
-
-```bash
-ollama account
-```
-
-On first launch:
-
-1. Choose `Add first account`
-2. Enter the Ollama account email
-3. Log into Ollama in the opened Chrome window
-4. Return to the terminal and press Enter
-
-After that, you can:
-
-- Refresh all tracked accounts
-- Add new accounts
-- Relogin an account
-- Remove an account
-- Switch between `table` and `cards` view
-- Set the current account highlight
-
-## Safety
-
-`ollama account` is added through a small `zsh` function.
-
-It only intercepts this exact case:
+Основной запуск:
 
 ```bash
 ollama account
 ```
 
-All other commands are forwarded to the original Ollama binary:
+Если нужно запустить напрямую без shell-интеграции:
+
+```bash
+node ./src/cli.js
+```
+
+## Первый запуск
+
+При первом запуске:
+
+1. Выбери `Add first account`
+2. Введи почту аккаунта Ollama
+3. Войди в Ollama в открывшемся окне Chrome
+4. Вернись в терминал и нажми Enter
+
+После этого можно:
+
+- обновлять usage по всем аккаунтам
+- добавлять новые аккаунты
+- перевходить в конкретный аккаунт
+- удалять аккаунты из отслеживания
+- переключать вид между `table` и `cards`
+- выбирать текущий активный аккаунт
+
+## Безопасность
+
+Команда `ollama account` подключается через небольшую `zsh`-функцию.
+
+Перехватывается только этот конкретный случай:
+
+```bash
+ollama account
+```
+
+Все остальные команды уходят в настоящий бинарник Ollama:
 
 - `ollama run`
 - `ollama list`
@@ -82,36 +90,52 @@ All other commands are forwarded to the original Ollama binary:
 - `ollama signout`
 - `ollama --help`
 
-## Project Structure
+То есть реальный `ollama` не подменяется и не ломается.
+
+## Структура проекта
 
 ```text
-config/accounts.json        tracked accounts and UI preferences
-data/current-account.txt    highlighted account
-data/usage-snapshot.json    last fetched usage snapshot
-profiles/                   persistent Chrome profiles, one per account
-src/cli.js                  app entrypoint
-src/services/menu.js        interactive menu flow
+config/accounts.json        список отслеживаемых аккаунтов и настройки интерфейса
+data/current-account.txt    текущий подсвеченный аккаунт
+data/usage-snapshot.json    последний сохраненный usage snapshot
+profiles/                   постоянные Chrome-профили, по одному на аккаунт
+src/cli.js                  точка входа
+src/services/menu.js        интерактивное меню
 src/services/usage-collector.js
-                            usage collection via Playwright
-src/storage/store.js        config and snapshot persistence
-src/render.js               terminal rendering
+                            сбор usage через Playwright
+src/storage/store.js        работа с конфигом и snapshot
+src/render.js               терминальный рендер интерфейса
 ```
 
-## Notes
+## Полезные команды
 
-- If Google blocks login in an automated browser flow, the app uses the installed Chrome channel rather than bundled Chromium.
-- If Ollama changes the markup of the `Cloud Usage` page, the parser in `src/services/usage-collector.js` may need an update.
+Установить интеграцию для `zsh`:
 
-## Development
+```bash
+npm run install:zsh
+```
 
-Run directly without shell integration:
+Посмотреть текущее внутреннее состояние в JSON:
+
+```bash
+node ./src/cli.js --json
+```
+
+## Важные замечания
+
+- Если Google блокирует вход как «небезопасный браузер», приложение использует установленный Chrome, а не встроенный Chromium Playwright
+- Если Ollama изменит верстку страницы `Cloud Usage`, парсер в `src/services/usage-collector.js` может потребовать обновления
+
+## Для разработки
+
+Запуск без `ollama account`:
 
 ```bash
 node ./src/cli.js
 ```
 
-Print current internal state as JSON:
+Если после установки интеграции команда не подхватилась:
 
 ```bash
-node ./src/cli.js --json
+source ~/.zshrc
 ```
