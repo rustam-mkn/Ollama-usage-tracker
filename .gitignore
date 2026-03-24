@@ -1,0 +1,7 @@
+node_modules/
+profiles/
+
+.DS_Store
+
+data/current-account.txt
+data/usage-snapshot.json
