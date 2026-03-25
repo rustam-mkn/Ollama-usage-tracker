@@ -3,6 +3,7 @@
 import process from 'node:process';
 import { Command } from 'commander';
 import { runInteractiveMenu } from './services/menu.js';
+import { migrateLegacyStorage } from './services/storage-migration.js';
 import { mergeUsageState } from './storage/store.js';
 
 const program = new Command();
@@ -12,6 +13,7 @@ program
   .description('Track and refresh cloud usage across multiple Ollama accounts.')
   .option('--json', 'Print merged state as JSON')
   .action(async (options) => {
+    migrateLegacyStorage();
     if (options.json) {
       process.stdout.write(`${JSON.stringify(mergeUsageState({}), null, 2)}\n`);
       return;

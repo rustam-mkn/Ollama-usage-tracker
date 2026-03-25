@@ -5,6 +5,7 @@ import {
   defaultCurrentAccountPath,
   defaultSnapshotPath,
   ensureDir,
+  profilesDirPath,
   readOptionalJsonFile,
   readOptionalTextFile,
   writeJsonFile,
@@ -39,7 +40,7 @@ export function loadConfig(configPath = defaultConfigPath) {
       email: account.email,
       profileDir:
         account.profileDir ||
-        path.resolve(process.cwd(), 'profiles', slugifyEmail(account.email)),
+        path.resolve(profilesDirPath, slugifyEmail(account.email)),
       createdAt: account.createdAt || null,
       updatedAt: account.updatedAt || null,
     })),
@@ -79,7 +80,7 @@ export function ensureAccountRecord(config, email) {
     return existing;
   }
 
-  const profileDir = path.resolve(process.cwd(), 'profiles', slugifyEmail(normalized));
+  const profileDir = path.resolve(profilesDirPath, slugifyEmail(normalized));
   ensureDir(profileDir);
   const next = {
     name: normalized,

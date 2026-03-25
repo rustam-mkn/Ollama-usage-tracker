@@ -77,6 +77,10 @@ function updateSnapshotEntry(email, usage) {
 }
 
 async function refreshAllAccounts(config) {
+  const previousSnapshot = loadSnapshot();
+  const previousByEmail = new Map(
+    (previousSnapshot.accounts || []).map((entry) => [entry.email.toLowerCase(), entry])
+  );
   const nextAccounts = [];
 
   clearScreen();
@@ -90,10 +94,12 @@ async function refreshAllAccounts(config) {
       nextAccounts.push(usage);
       process.stdout.write(`  ${accent('ok')}\n`);
     } catch (error) {
-      nextAccounts.push({
-        email: account.email,
-        error: error.message,
-      });
+      const previous = previousByEmail.get(account.email.toLowerCase());
+      nextAccounts.push(
+        previous
+          ? { ...previous, email: account.email, error: error.message }
+          : { email: account.email, error: error.message }
+      );
       process.stdout.write(`  ${chalk.red(error.message)}\n`);
     }
   }

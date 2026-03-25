@@ -1,5 +1,27 @@
 {
   "version": 1,
   "view": "table",
-  "accounts": []
+  "accounts": [
+    {
+      "name": "operatoraigpt@gmail.com",
+      "email": "operatoraigpt@gmail.com",
+      "profileDir": "/Users/user/Dev/vibecode/Ollama-usage-tracker/profiles/operatoraigpt-gmail-com",
+      "createdAt": "2026-03-25T08:55:23.055Z",
+      "updatedAt": "2026-03-25T08:55:23.058Z"
+    },
+    {
+      "name": "picoclawd@gmail.com",
+      "email": "picoclawd@gmail.com",
+      "profileDir": "/Users/user/Dev/vibecode/Ollama-usage-tracker/profiles/picoclawd-gmail-com",
+      "createdAt": "2026-03-25T08:56:20.409Z",
+      "updatedAt": "2026-03-25T08:56:20.409Z"
+    },
+    {
+      "name": "brustam219@gmail.com",
+      "email": "brustam219@gmail.com",
+      "profileDir": "/Users/user/Dev/vibecode/Ollama-usage-tracker/profiles/brustam219-gmail-com",
+      "createdAt": "2026-03-25T08:57:26.315Z",
+      "updatedAt": "2026-03-25T08:57:26.315Z"
+    }
+  ]
 }

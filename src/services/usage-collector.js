@@ -29,19 +29,30 @@ async function tryCompleteConnectFlow(page) {
   }
 }
 
-function extractUsage(text, label) {
-  const regex = new RegExp(
-    `${label}\\s+(\\d+(?:[.,]\\d+)?)%\\s+used\\s+Resets\\s+in\\s+([^\\n]+)`,
-    'i'
-  );
-  const match = text.match(regex);
-  if (!match) {
+function escapeRegex(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function extractUsage(text, label, nextLabel) {
+  const normalizedText = text.replace(/\u00a0/g, ' ');
+  const sectionRegex = nextLabel
+    ? new RegExp(`${escapeRegex(label)}([\\s\\S]*?)(?=${escapeRegex(nextLabel)})`, 'i')
+    : new RegExp(`${escapeRegex(label)}([\\s\\S]*)`, 'i');
+  const sectionMatch = normalizedText.match(sectionRegex);
+  if (!sectionMatch) {
+    return null;
+  }
+
+  const section = sectionMatch[1];
+  const percentMatch = section.match(/(\d+(?:[.,]\d+)?)%\s+used/i);
+  const resetMatch = section.match(/Resets\s+in\s+([^\n]+)/i);
+  if (!percentMatch || !resetMatch) {
     return null;
   }
 
   return {
-    percent: Number(match[1].replace(',', '.')),
-    resetIn: match[2].trim(),
+    percent: Number(percentMatch[1].replace(',', '.')),
+    resetIn: resetMatch[1].trim(),
   };
 }
 
@@ -54,7 +65,7 @@ async function readUsageFromPage(page, expectedEmail) {
   await page.goto(SETTINGS_URL, { waitUntil: 'domcontentloaded' });
   await page.waitForLoadState('networkidle').catch(() => {});
   const bodyText = await page.locator('body').innerText();
-  const session = extractUsage(bodyText, 'Session usage');
+  const session = extractUsage(bodyText, 'Session usage', 'Weekly usage');
   const weekly = extractUsage(bodyText, 'Weekly usage');
   const detectedEmail = extractEmail(bodyText);
 
