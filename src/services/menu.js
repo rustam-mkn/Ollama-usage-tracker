@@ -15,6 +15,7 @@ import {
   setCurrentAccount,
 } from '../storage/store.js';
 import { nowLabel } from '../lib/format.js';
+import { switchOllamaAccount } from './current-account-switcher.js';
 import { loginAccountInteractive, refreshAccountUsage } from './usage-collector.js';
 
 const accent = chalk.hex('#da7b5b');
@@ -217,7 +218,16 @@ async function chooseCurrentAccount(config) {
     return;
   }
 
+  const account = config.accounts.find((entry) => entry.email === selected);
+  clearScreen();
+  process.stdout.write(
+    `${chalk.bold('Switching Ollama account')}\n` +
+      `The real Ollama session will be switched to ${accent(selected)}.\n\n`
+  );
+
+  await switchOllamaAccount(account, promptTheme);
   setCurrentAccount(selected);
+  await pause('Account switched. Press Enter to return to the menu.');
 }
 
 async function removeAccount(config) {

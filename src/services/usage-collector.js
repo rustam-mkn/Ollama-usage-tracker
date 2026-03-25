@@ -8,6 +8,27 @@ const CHROME_ARGS = [
   '--no-default-browser-check',
 ];
 
+async function launchAccountContext(profileDir, headless) {
+  return chromium.launchPersistentContext(profileDir, {
+    channel: 'chrome',
+    headless,
+    viewport: { width: 1440, height: 980 },
+    args: CHROME_ARGS,
+  });
+}
+
+async function tryClickAction(page, namePattern) {
+  await page.getByRole('button', { name: namePattern }).click({ timeout: 1500 }).catch(() => {});
+  await page.getByRole('link', { name: namePattern }).click({ timeout: 1500 }).catch(() => {});
+}
+
+async function tryCompleteConnectFlow(page) {
+  const actions = [/connect/i, /continue/i, /authorize/i, /allow/i, /approve/i, /open/i];
+  for (const pattern of actions) {
+    await tryClickAction(page, pattern);
+  }
+}
+
 function extractUsage(text, label) {
   const regex = new RegExp(
     `${label}\\s+(\\d+(?:[.,]\\d+)?)%\\s+used\\s+Resets\\s+in\\s+([^\\n]+)`,
@@ -56,12 +77,7 @@ async function readUsageFromPage(page, expectedEmail) {
 }
 
 export async function loginAccountInteractive(account) {
-  const context = await chromium.launchPersistentContext(account.profileDir, {
-    channel: 'chrome',
-    headless: false,
-    viewport: { width: 1440, height: 980 },
-    args: CHROME_ARGS,
-  });
+  const context = await launchAccountContext(account.profileDir, false);
   const page = context.pages()[0] || (await context.newPage());
   await page.goto(SETTINGS_URL, { waitUntil: 'domcontentloaded' });
 
@@ -76,12 +92,7 @@ export async function loginAccountInteractive(account) {
 }
 
 export async function refreshAccountUsage(account) {
-  const context = await chromium.launchPersistentContext(account.profileDir, {
-    channel: 'chrome',
-    headless: true,
-    viewport: { width: 1440, height: 980 },
-    args: CHROME_ARGS,
-  });
+  const context = await launchAccountContext(account.profileDir, true);
 
   try {
     const page = context.pages()[0] || (await context.newPage());
@@ -89,4 +100,18 @@ export async function refreshAccountUsage(account) {
   } finally {
     await context.close();
   }
+}
+
+export async function openConnectUrlInAccountProfile(account, connectUrl) {
+  const context = await launchAccountContext(account.profileDir, false);
+  const page = context.pages()[0] || (await context.newPage());
+  await page.goto(connectUrl, { waitUntil: 'domcontentloaded' });
+  await page.waitForLoadState('networkidle').catch(() => {});
+  await tryCompleteConnectFlow(page);
+
+  return {
+    async close() {
+      await context.close();
+    },
+  };
 }
