@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import process from 'node:process';
-import { Command } from 'commander';
+import { Command, InvalidOptionArgumentError } from 'commander';
 import { runInteractiveMenu } from './services/menu.js';
 import { migrateLegacyStorage } from './services/storage-migration.js';
 import { mergeUsageState } from './storage/store.js';
@@ -12,6 +12,19 @@ program
   .name('ollama-account')
   .description('Track and refresh cloud usage across multiple Ollama accounts.')
   .option('--json', 'Print merged state as JSON')
+  .option(
+    '--refresh-interval <minutes>',
+    'Auto-refresh interval in minutes while the menu is open (0 disables it)',
+    (value) => {
+      const minutes = Number.parseInt(value, 10);
+      if (Number.isNaN(minutes) || minutes < 0) {
+        throw new InvalidOptionArgumentError('refresh interval must be a non-negative integer');
+      }
+
+      return minutes;
+    },
+    20
+  )
   .action(async (options) => {
     migrateLegacyStorage();
     if (options.json) {
@@ -19,7 +32,9 @@ program
       return;
     }
 
-    await runInteractiveMenu();
+    await runInteractiveMenu({
+      autoRefreshMinutes: options.refreshInterval,
+    });
   });
 
 program.parseAsync(process.argv).catch((error) => {

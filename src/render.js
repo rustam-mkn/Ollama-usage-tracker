@@ -154,6 +154,10 @@ export function renderFramedTable(state) {
     lines.push(chalk.dim(`Checked at: ${state.checkedAt}`));
   }
 
+  if (state.refreshStatus) {
+    lines.push(chalk.dim(state.refreshStatus));
+  }
+
   return lines.join('\n');
 }
 
@@ -200,6 +204,10 @@ export function renderAccountBlocks(state) {
   if (state.checkedAt) {
     lines.push('');
     lines.push(chalk.dim(`Checked at: ${state.checkedAt}`));
+  }
+
+  if (state.refreshStatus) {
+    lines.push(chalk.dim(state.refreshStatus));
   }
 
   return lines.join('\n');

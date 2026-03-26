@@ -40,6 +40,22 @@ function renderState(state) {
   return state.view === 'cards' ? renderAccountBlocks(state) : renderFramedTable(state);
 }
 
+function formatAutoRefreshStatus({ autoRefreshMinutes, refreshInProgress, lastRefreshError }) {
+  if (autoRefreshMinutes <= 0) {
+    return 'Auto refresh: disabled';
+  }
+
+  if (refreshInProgress) {
+    return `Auto refresh: updating in background every ${autoRefreshMinutes} min`;
+  }
+
+  if (lastRefreshError) {
+    return `Auto refresh: every ${autoRefreshMinutes} min, last error: ${lastRefreshError}`;
+  }
+
+  return `Auto refresh: every ${autoRefreshMinutes} min`;
+}
+
 function listAccountChoices(config) {
   return config.accounts.map((account) => ({
     name: `\t${account.email}`,
@@ -77,32 +93,43 @@ function updateSnapshotEntry(email, usage) {
 }
 
 async function refreshAllAccounts(config) {
+  return refreshAccountsSnapshot(config, { silent: false });
+}
+
+async function refreshAccountsSnapshot(config, { silent }) {
   const previousSnapshot = loadSnapshot();
   const previousByEmail = new Map(
     (previousSnapshot.accounts || []).map((entry) => [entry.email.toLowerCase(), entry])
   );
-  const nextAccounts = [];
-
-  clearScreen();
-  process.stdout.write(`${chalk.bold('Refreshing all accounts...')}\n\n`);
-
-  for (const account of config.accounts) {
-    process.stdout.write(`- ${account.email}\n`);
-
-    try {
-      const usage = await refreshAccountUsage(account);
-      nextAccounts.push(usage);
-      process.stdout.write(`  ${accent('ok')}\n`);
-    } catch (error) {
-      const previous = previousByEmail.get(account.email.toLowerCase());
-      nextAccounts.push(
-        previous
-          ? { ...previous, email: account.email, error: error.message }
-          : { email: account.email, error: error.message }
-      );
-      process.stdout.write(`  ${chalk.red(error.message)}\n`);
-    }
+  if (!silent) {
+    clearScreen();
+    process.stdout.write(`${chalk.bold('Refreshing all accounts...')}\n\n`);
   }
+
+  const settledAccounts = await Promise.all(
+    config.accounts.map(async (account) => {
+      try {
+        const usage = await refreshAccountUsage(account);
+        return {
+          email: account.email,
+          ok: true,
+          usage,
+        };
+      } catch (error) {
+        const previous = previousByEmail.get(account.email.toLowerCase());
+        return {
+          email: account.email,
+          ok: false,
+          usage: previous
+            ? { ...previous, email: account.email, error: error.message }
+            : { email: account.email, error: error.message },
+          error: error.message,
+        };
+      }
+    })
+  );
+
+  const nextAccounts = settledAccounts.map((entry) => entry.usage);
 
   saveSnapshot({
     source: 'playwright',
@@ -110,7 +137,14 @@ async function refreshAllAccounts(config) {
     accounts: nextAccounts,
   });
 
-  await pause();
+  if (!silent) {
+    for (const entry of settledAccounts) {
+      process.stdout.write(`- ${entry.email}\n`);
+      process.stdout.write(entry.ok ? `  ${accent('ok')}\n` : `  ${chalk.red(entry.error)}\n`);
+    }
+
+    await pause();
+  }
 }
 
 function choice(name, value) {
@@ -295,8 +329,9 @@ async function switchView(config) {
   saveConfig(config);
 }
 
-function printDashboard() {
+function printDashboard(options = {}) {
   const state = mergeUsageState({});
+  state.refreshStatus = options.refreshStatus || null;
   clearScreen();
   process.stdout.write(`${renderState(state)}\n\n`);
 }
@@ -319,10 +354,53 @@ function buildActions(config) {
   return choices;
 }
 
-export async function runInteractiveMenu() {
-  for (;;) {
+export async function runInteractiveMenu({ autoRefreshMinutes = 20 } = {}) {
+  let backgroundRefreshPromise = null;
+  let lastRefreshError = null;
+
+  async function triggerBackgroundRefresh() {
+    if (backgroundRefreshPromise) {
+      return backgroundRefreshPromise;
+    }
+
     const config = loadConfig();
-    printDashboard();
+    if (!config.accounts.length) {
+      return null;
+    }
+
+    lastRefreshError = null;
+    backgroundRefreshPromise = refreshAccountsSnapshot(config, { silent: true })
+      .catch((error) => {
+        lastRefreshError = error.message;
+      })
+      .finally(() => {
+        backgroundRefreshPromise = null;
+      });
+
+    return backgroundRefreshPromise;
+  }
+
+  const timer =
+    autoRefreshMinutes > 0
+      ? setInterval(() => {
+          void triggerBackgroundRefresh();
+        }, autoRefreshMinutes * 60 * 1000)
+      : null;
+
+  if (autoRefreshMinutes > 0) {
+    void triggerBackgroundRefresh();
+  }
+
+  try {
+    for (;;) {
+    const config = loadConfig();
+    printDashboard({
+      refreshStatus: formatAutoRefreshStatus({
+        autoRefreshMinutes,
+        refreshInProgress: !!backgroundRefreshPromise,
+        lastRefreshError,
+      }),
+    });
 
     const action = await select({
       message: 'Choose an action:',
@@ -336,6 +414,9 @@ export async function runInteractiveMenu() {
     }
 
     if (action === 'refresh') {
+      if (backgroundRefreshPromise) {
+        await backgroundRefreshPromise;
+      }
       await refreshAllAccounts(config);
       continue;
     }
@@ -362,6 +443,11 @@ export async function runInteractiveMenu() {
 
     if (action === 'view') {
       await switchView(config);
+    }
+  }
+  } finally {
+    if (timer) {
+      clearInterval(timer);
     }
   }
 }
